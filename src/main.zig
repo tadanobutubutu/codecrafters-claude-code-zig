@@ -96,7 +96,11 @@ pub fn main(init: std.process.Init) !void {
                 defer file.close();
                 var buf: [4096]u8 = undefined;
                 var reader = file.reader(io, &buf);
-                const content = try reader.allocRemaining(allocator, .limited(1024 * 1024));
+                @compileLog("allocRemaining:", @hasDecl(std.Io.Reader, "allocRemaining"));
+                @compileLog("readAllAlloc:", @hasDecl(std.Io.Reader, "readAllAlloc"));
+                @compileLog("readAlloc:", @hasDecl(std.Io.Reader, "readAlloc"));
+                @compileLog("readToEndAlloc:", @hasDecl(std.Io.Reader, "readToEndAlloc"));
+                const content = try reader.readAllAlloc(allocator, 1024 * 1024);
                 defer allocator.free(content);
 
                 try std.Io.File.stdout().writeStreamingAll(io, content);
