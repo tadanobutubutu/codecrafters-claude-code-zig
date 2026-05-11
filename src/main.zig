@@ -5,11 +5,12 @@ pub fn main() !void {
     defer arena.deinit();
     const allocator = arena.allocator();
 
-    const args = try std.process.argsAlloc(allocator);
-    defer std.process.argsFree(allocator, args);
+    var args_it = try std.process.argsWithAllocator(allocator);
+    defer args_it.deinit();
 
-    if (args.len < 3) return;
-    const prompt_str = args[2];
+    _ = args_it.next();
+    _ = args_it.next();
+    const prompt_str = args_it.next() orelse return;
 
     const api_key = std.posix.getenv("OPENROUTER_API_KEY") orelse return;
     const base_url = std.posix.getenv("OPENROUTER_BASE_URL") orelse "https://openrouter.ai/api/v1";
