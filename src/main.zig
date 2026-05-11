@@ -27,9 +27,7 @@ const Response = struct {
 };
 
 pub fn main() !void {
-    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
-    defer _ = gpa.deinit();
-    const allocator = gpa.allocator();
+    const allocator = std.heap.page_allocator;
 
     var args = try std.process.argsWithAllocator(allocator);
     defer args.deinit();
