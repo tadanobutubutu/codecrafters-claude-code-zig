@@ -29,12 +29,8 @@ pub fn main(init: std.process.Init) !void {
     defer allocator.free(auth_value);
 
     // Initial message history
-    var messages = std.ArrayList(std.json.Value).init(allocator);
-    defer {
-        // We should ideally clean up the values, but for a short-lived process it might be okay.
-        // However, let's try to be clean if possible.
-        messages.deinit();
-    }
+    var messages = std.json.Array.init(allocator);
+    defer messages.deinit();
 
     var user_msg_map = std.json.ObjectMap.init(allocator);
     try user_msg_map.put("role", std.json.Value{ .string = "user" });
@@ -53,7 +49,7 @@ pub fn main(init: std.process.Init) !void {
         try jw.write("anthropic/claude-haiku-4.5");
         
         try jw.objectField("messages");
-        try jw.write(messages.items);
+        try jw.write(std.json.Value{ .array = messages });
         
         // Advertise tools
         try jw.objectField("tools");
