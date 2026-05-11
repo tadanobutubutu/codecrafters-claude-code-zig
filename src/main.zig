@@ -94,7 +94,9 @@ pub fn main(init: std.process.Init) !void {
 
                 var file = try std.Io.Dir.cwd().openFile(io, func_args.value.file_path, .{});
                 defer file.close();
-                const content = try file.readToEndAlloc(io, allocator, 1024 * 1024);
+                var buf: [4096]u8 = undefined;
+                var reader = file.reader(io, &buf);
+                const content = try reader.allocRemaining(allocator, .limited(1024 * 1024));
                 defer allocator.free(content);
 
                 try std.Io.File.stdout().writeStreamingAll(io, content);
