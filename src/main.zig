@@ -4,6 +4,7 @@ pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
     defer arena.deinit();
     const allocator = arena.allocator();
+    @compileError(@import("builtin").zig_version_string);
 
     var args_it = try std.process.argsWithAllocator(allocator);
     defer args_it.deinit();
