@@ -93,16 +93,13 @@ pub fn main(init: std.process.Init) !void {
                 defer func_args.deinit();
 
                 var file = try std.Io.Dir.cwd().openFile(io, func_args.value.file_path, .{});
-                defer file.close();
+                defer file.close(io);
                 
-                // Read using allocRemaining or similar. Wait, earlier it was said "readPositional" or "readStreaming".
-                // I will use @compileLog to see what File has if the test fails.
-                    @compileLog("File decls:", @typeInfo(std.Io.File).@"struct".decls);
-                    
-                    // Dummy usage to pass zig's unused variable checks
-                    _ = file;
-                    
-                    try std.Io.File.stdout().writeStreamingAll(io, "dummy");
+                var buf: [1024 * 1024]u8 = undefined;
+                const bytes_read = try file.readPositionalAll(io, &buf, 0);
+                
+                // Respond with the file contents
+                try std.Io.File.stdout().writeStreamingAll(io, buf[0..bytes_read]);
             }
         }
     } else if (message.object.get("content")) |content| {
