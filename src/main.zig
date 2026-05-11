@@ -96,7 +96,7 @@ pub fn main(init: std.process.Init) !void {
                     const args = try std.json.parseFromSlice(struct { file_path: []const u8 }, allocator, args_str, .{ .ignore_unknown_fields = true });
                     defer args.deinit();
 
-                    const file_content = try std.fs.cwd().readFileAlloc(allocator, args.value.file_path, 1024 * 1024);
+                    const file_content = try @import("std").fs.cwd().readFileAlloc(allocator, args.value.file_path, 1024 * 1024);
                     defer allocator.free(file_content);
 
                     try std.Io.File.stdout().writeStreamingAll(io, file_content);
