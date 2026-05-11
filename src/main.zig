@@ -63,7 +63,7 @@ pub fn main(init: std.process.Init) !void {
     var response_out: std.Io.Writer.Allocating = .init(allocator);
     defer response_out.deinit();
 
-    const fetch_res = try client.fetch(.{
+    _ = try client.fetch(.{
         .location = .{ .url = uri_str },
         .method = .POST,
         .payload = body,
