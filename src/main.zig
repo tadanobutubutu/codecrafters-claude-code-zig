@@ -92,7 +92,9 @@ pub fn main(init: std.process.Init) !void {
                 const func_args = try std.json.parseFromSlice(struct { file_path: []const u8 }, allocator, func_args_str, .{ .ignore_unknown_fields = true });
                 defer func_args.deinit();
 
-                const content = try std.fs.cwd().readFileAlloc(allocator, func_args.value.file_path, 1024 * 1024);
+                var file = try std.Io.Dir.cwd().openFile(io, func_args.value.file_path, .{});
+                defer file.close();
+                const content = try file.readToEndAlloc(io, allocator, 1024 * 1024);
                 defer allocator.free(content);
 
                 try std.Io.File.stdout().writeStreamingAll(io, content);
