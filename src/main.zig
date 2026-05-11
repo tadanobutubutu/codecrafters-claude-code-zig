@@ -74,7 +74,6 @@ pub fn main(init: std.process.Init) !void {
         .response_writer = &response_out.writer,
     });
     const response_body = response_out.written();
-    std.debug.print("Status: {d}\nBody: {s}\n", .{fetch_res.status, response_body});
 
     // Parse response
     const parsed = try std.json.parseFromSlice(std.json.Value, allocator, response_body, .{ .ignore_unknown_fields = true });
