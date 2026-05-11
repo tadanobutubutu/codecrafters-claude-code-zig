@@ -31,7 +31,7 @@ pub fn main(init: std.process.Init) !void {
     defer body_out.deinit();
     var jw: std.json.Stringify = .{ .writer = &body_out.writer };
     try jw.write(.{
-        .model = "anthropic/claude-3.5-sonnet",
+        .model = "anthropic/claude-haiku-4.5",
         .messages = &[_]struct { role: []const u8, content: []const u8 }{
             .{ .role = "user", .content = prompt_str },
         },
