@@ -23,26 +23,10 @@ pub fn main(init: std.process.Init) !void {
     var jw: std.json.Stringify = .{ .writer = &body_out.writer };
     try jw.write(.{
         .model = "anthropic/claude-haiku-4.5",
-        .messages = &[_]struct { role: []const u8, content: []const u8 }{
+        .messages = &.{
             .{ .role = "user", .content = prompt_str },
         },
-        .tools = &[_]struct {
-            type: []const u8,
-            function: struct {
-                name: []const u8,
-                description: []const u8,
-                parameters: struct {
-                    type: []const u8,
-                    properties: struct {
-                        file_path: struct {
-                            type: []const u8,
-                            description: []const u8,
-                        },
-                    },
-                    required: []const []const u8,
-                },
-            },
-        }{
+        .tools = &.{
             .{
                 .type = "function",
                 .function = .{
@@ -56,7 +40,7 @@ pub fn main(init: std.process.Init) !void {
                                 .description = "The path to the file to read",
                             },
                         },
-                        .required = &[_][]const u8{"file_path"},
+                        .required = &.{ "file_path" },
                     },
                 },
             },
@@ -104,17 +88,19 @@ pub fn main(init: std.process.Init) !void {
 
     const message = choices.array.items[0].object.get("message") orelse @panic("No message in response");
     if (message.object.get("tool_calls")) |tool_calls| {
-        for (tool_calls.array.items) |tool_call| {
-            const func = tool_call.object.get("function").?.object;
-            if (std.mem.eql(u8, func.get("name").?.string, "Read")) {
-                const args_str = func.get("arguments").?.string;
-                const args = try std.json.parseFromSlice(struct { file_path: []const u8 }, allocator, args_str, .{ .ignore_unknown_fields = true });
-                defer args.deinit();
+        if (tool_calls == .array) {
+            for (tool_calls.array.items) |tool_call| {
+                const func = tool_call.object.get("function").?.object;
+                if (std.mem.eql(u8, func.get("name").?.string, "Read")) {
+                    const args_str = func.get("arguments").?.string;
+                    const args = try std.json.parseFromSlice(struct { file_path: []const u8 }, allocator, args_str, .{ .ignore_unknown_fields = true });
+                    defer args.deinit();
 
-                const file_content = try std.fs.cwd().readFileAlloc(allocator, args.value.file_path, 1024 * 1024);
-                defer allocator.free(file_content);
+                    const file_content = try std.fs.cwd().readFileAlloc(allocator, args.value.file_path, 1024 * 1024);
+                    defer allocator.free(file_content);
 
-                try std.Io.File.stdout().writeStreamingAll(io, file_content);
+                    try std.Io.File.stdout().writeStreamingAll(io, file_content);
+                }
             }
         }
     } else {
