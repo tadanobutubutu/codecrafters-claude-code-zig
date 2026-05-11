@@ -1,184 +1,230 @@
 const std = @import("std");
 
-pub fn main(init: std.process.Init) !void {
-    const allocator = init.gpa;
-    const io = init.io;
+const ToolCall = struct {
+    id: []const u8,
+    type: []const u8 = "function",
+    function: struct {
+        name: []const u8,
+        arguments: []const u8,
+    },
+};
 
-    var arg_it = try std.process.Args.Iterator.initAllocator(init.minimal.args, allocator);
-    defer arg_it.deinit();
+const Message = struct {
+    role: []const u8,
+    content: ?[]const u8 = null,
+    tool_calls: ?[]const ToolCall = null,
+    tool_call_id: ?[]const u8 = null,
+};
 
-    _ = arg_it.next(); // argv0
-    const flag = arg_it.next() orelse @panic("Usage: main -p <prompt>");
-    const prompt_str = arg_it.next() orelse @panic("Usage: main -p <prompt>");
+const Response = struct {
+    choices: []struct {
+        message: struct {
+            role: []const u8,
+            content: ?[]const u8 = null,
+            tool_calls: ?[]const ToolCall = null,
+        },
+    },
+};
+
+pub fn main() !void {
+    var gpa = std.heap.GeneralPurposeAllocator(.{}){};
+    defer _ = gpa.deinit();
+    const allocator = gpa.allocator();
+
+    var args = try std.process.argsWithAllocator(allocator);
+    defer args.deinit();
+
+    _ = args.next(); // argv0
+    const flag = args.next() orelse {
+        std.debug.print("Usage: main -p <prompt>\n", .{});
+        return;
+    };
+    const prompt_str = args.next() orelse {
+        std.debug.print("Usage: main -p <prompt>\n", .{});
+        return;
+    };
     if (!std.mem.eql(u8, flag, "-p")) {
-        @panic("Usage: main -p <prompt>");
+        std.debug.print("Usage: main -p <prompt>\n", .{});
+        return;
     }
 
-    const api_key = init.environ_map.get("OPENROUTER_API_KEY") orelse @panic("OPENROUTER_API_KEY is not set");
-    const base_url = init.environ_map.get("OPENROUTER_BASE_URL") orelse "https://openrouter.ai/api/v1";
-
-    var client: std.http.Client = .{
-        .allocator = allocator,
-        .io = io,
+    const api_key = std.process.getEnvVarOwned(allocator, "OPENROUTER_API_KEY") catch |err| switch (err) {
+        error.EnvironmentVariableNotFound => {
+            std.debug.print("OPENROUTER_API_KEY is not set\n", .{});
+            return err;
+        },
+        else => return err,
     };
+    defer allocator.free(api_key);
+
+    const base_url = std.process.getEnvVarOwned(allocator, "OPENROUTER_BASE_URL") catch |err| switch (err) {
+        error.EnvironmentVariableNotFound => try allocator.dupe(u8, "https://openrouter.ai/api/v1"),
+        else => return err,
+    };
+    defer allocator.free(base_url);
+
+    var client = std.http.Client{ .allocator = allocator };
     defer client.deinit();
 
     const uri_str = try std.fmt.allocPrint(allocator, "{s}/chat/completions", .{base_url});
     defer allocator.free(uri_str);
+    const parsed_uri = try std.Uri.parse(uri_str);
+
     const auth_value = try std.fmt.allocPrint(allocator, "Bearer {s}", .{api_key});
     defer allocator.free(auth_value);
 
     // Initial message history
-    var messages = std.json.Array.init(allocator);
-    defer messages.deinit();
+    var messages = std.ArrayList(Message){};
+    defer {
+        for (messages.items) |msg| {
+            allocator.free(msg.role);
+            if (msg.content) |c| allocator.free(c);
+            if (msg.tool_call_id) |id| allocator.free(id);
+            if (msg.tool_calls) |tcs| {
+                for (tcs) |tc| {
+                    allocator.free(tc.id);
+                    allocator.free(tc.type);
+                    allocator.free(tc.function.name);
+                    allocator.free(tc.function.arguments);
+                }
+                allocator.free(tcs);
+            }
+        }
+        messages.deinit(allocator);
+    }
 
-    var user_msg_map = std.json.ObjectMap.init(allocator);
-    try user_msg_map.put("role", std.json.Value{ .string = "user" });
-    try user_msg_map.put("content", std.json.Value{ .string = prompt_str });
-    try messages.append(std.json.Value{ .object = user_msg_map });
+    try messages.append(allocator, .{ 
+        .role = try allocator.dupe(u8, "user"), 
+        .content = try allocator.dupe(u8, prompt_str) 
+    });
 
     while (true) {
         // Build request body
-        var body_out: std.Io.Writer.Allocating = .init(allocator);
-        defer body_out.deinit();
-        var jw: std.json.Stringify = .{ .writer = &body_out.writer };
-        
-        // Construct the request object
-        try jw.beginObject();
-        try jw.objectField("model");
-        try jw.write("anthropic/claude-haiku-4.5");
-        
-        try jw.objectField("messages");
-        try jw.write(std.json.Value{ .array = messages });
-        
-        // Advertise tools
-        try jw.objectField("tools");
-        try jw.beginArray();
-        try jw.beginObject();
-        try jw.objectField("type");
-        try jw.write("function");
-        try jw.objectField("function");
-        try jw.beginObject();
-        try jw.objectField("name");
-        try jw.write("Read");
-        try jw.objectField("description");
-        try jw.write("Read and return the contents of a file");
-        try jw.objectField("parameters");
-        try jw.beginObject();
-        try jw.objectField("type");
-        try jw.write("object");
-        try jw.objectField("properties");
-        try jw.beginObject();
-        try jw.objectField("file_path");
-        try jw.beginObject();
-        try jw.objectField("type");
-        try jw.write("string");
-        try jw.objectField("description");
-        try jw.write("The path to the file to read");
-        try jw.endObject();
-        try jw.endObject();
-        try jw.objectField("required");
-        try jw.beginArray();
-        try jw.write("file_path");
-        try jw.endArray();
-        try jw.endObject();
-        try jw.endObject();
-        try jw.endObject();
-        try jw.endArray();
-        
-        try jw.endObject();
+        var body_buf = std.io.Writer.Allocating.init(allocator);
+        defer body_buf.deinit();
 
-        const body = body_out.written();
+        try std.json.Stringify.value(.{
+            .model = "anthropic/claude-3.5-sonnet",
+            .messages = messages.items,
+            .tools = &[_]struct {
+                type: []const u8,
+                function: struct {
+                    name: []const u8,
+                    description: []const u8,
+                    parameters: struct {
+                        type: []const u8,
+                        properties: struct {
+                            file_path: struct {
+                                type: []const u8,
+                                description: []const u8,
+                            },
+                        },
+                        required: []const []const u8,
+                    },
+                },
+            }{
+                .{
+                    .type = "function",
+                    .function = .{
+                        .name = "read_file",
+                        .description = "Read and return the contents of a file",
+                        .parameters = .{
+                            .type = "object",
+                            .properties = .{
+                                .file_path = .{
+                                    .type = "string",
+                                    .description = "The path to the file to read",
+                                },
+                            },
+                            .required = &[_][]const u8{"file_path"},
+                        },
+                    },
+                },
+            },
+        }, .{}, &body_buf.writer);
 
-        var response_out: std.Io.Writer.Allocating = .init(allocator);
-        defer response_out.deinit();
+        var response_buf = std.io.Writer.Allocating.init(allocator);
+        defer response_buf.deinit();
 
-        _ = try client.fetch(.{
-            .location = .{ .url = uri_str },
+        const fetch_res = try client.fetch(.{
+            .location = .{ .uri = parsed_uri },
             .method = .POST,
-            .payload = body,
+            .payload = body_buf.written(),
+            .response_writer = &response_buf.writer,
             .extra_headers = &.{
                 .{ .name = "content-type", .value = "application/json" },
                 .{ .name = "authorization", .value = auth_value },
             },
-            .response_writer = &response_out.writer,
         });
-        const response_body = response_out.written();
 
-        const parsed = try std.json.parseFromSlice(std.json.Value, allocator, response_body, .{ .ignore_unknown_fields = true });
+        if (fetch_res.status != .ok) {
+            std.debug.print("API returned status {d}: {s}\n", .{ @intFromEnum(fetch_res.status), response_buf.written() });
+            return error.ApiError;
+        }
+
+        const response_body = response_buf.written();
+
+        const parsed = try std.json.parseFromSlice(Response, allocator, response_body, .{ .ignore_unknown_fields = true });
+        defer parsed.deinit();
+
+        if (parsed.value.choices.len == 0) return error.NoChoicesInResponse;
         
-        const choices = parsed.value.object.get("choices") orelse @panic("No choices");
-        const choice = choices.array.items[0];
-        const message = choice.object.get("message") orelse @panic("No message");
+        const res_msg = parsed.value.choices[0].message;
+        
+        // Add assistant message to history
+        try messages.append(allocator, .{
+            .role = try allocator.dupe(u8, res_msg.role),
+            .content = if (res_msg.content) |c| try allocator.dupe(u8, c) else null,
+            .tool_calls = if (res_msg.tool_calls) |tcs| try dupeToolCalls(allocator, tcs) else null,
+        });
 
-        // Clone assistant message to persist in history
-        const message_cloned = try cloneJsonValue(allocator, message);
-        try messages.append(message_cloned);
+        if (res_msg.tool_calls) |tool_calls| {
+            for (tool_calls) |tool_call| {
+                if (std.mem.eql(u8, tool_call.function.name, "read_file")) {
+                    const args_parsed = try std.json.parseFromSlice(struct { file_path: []const u8 }, allocator, tool_call.function.arguments, .{ .ignore_unknown_fields = true });
+                    defer args_parsed.deinit();
 
-        if (message.object.get("tool_calls")) |tool_calls| {
-            for (tool_calls.array.items) |tool_call| {
-                const tool_call_id = tool_call.object.get("id").?.string;
-                const func = tool_call.object.get("function").?.object;
-                const name = func.get("name").?.string;
-                
-                if (std.mem.eql(u8, name, "Read")) {
-                    const func_args_str = func.get("arguments").?.string;
-                    const func_args = try std.json.parseFromSlice(struct { file_path: []const u8 }, allocator, func_args_str, .{ .ignore_unknown_fields = true });
-                    defer func_args.deinit();
-
-                    const file_path = func_args.value.file_path;
-                    var file = try std.Io.Dir.cwd().openFile(io, file_path, .{});
-                    defer file.close(io);
+                    const file_path = args_parsed.value.file_path;
+                    const content = std.fs.cwd().readFileAlloc(allocator, file_path, 1024 * 1024) catch |err| {
+                        const err_msg = try std.fmt.allocPrint(allocator, "Error reading file: {any}", .{err});
+                        try messages.append(allocator, .{
+                            .role = try allocator.dupe(u8, "tool"),
+                            .tool_call_id = try allocator.dupe(u8, tool_call.id),
+                            .content = err_msg,
+                        });
+                        continue;
+                    };
                     
-                    var buf: [1024 * 1024]u8 = undefined;
-                    const bytes_read = try file.readPositionalAll(io, &buf, 0);
-                    const file_content = try allocator.dupe(u8, buf[0..bytes_read]);
-                    
-                    // Add tool response to history
-                    var tool_msg_map = std.json.ObjectMap.init(allocator);
-                    try tool_msg_map.put("role", std.json.Value{ .string = "tool" });
-                    try tool_msg_map.put("tool_call_id", std.json.Value{ .string = try allocator.dupe(u8, tool_call_id) });
-                    try tool_msg_map.put("content", std.json.Value{ .string = file_content });
-                    try messages.append(std.json.Value{ .object = tool_msg_map });
+                    // Add tool result to history
+                    try messages.append(allocator, .{
+                        .role = try allocator.dupe(u8, "tool"),
+                        .tool_call_id = try allocator.dupe(u8, tool_call.id),
+                        .content = content,
+                    });
                 }
             }
-            parsed.deinit();
-            // Continue loop
+            // Continue loop to feed tool results back to LLM
         } else {
-            // No more tool calls, print content and exit
-            if (message.object.get("content")) |content| {
-                if (content == .string) {
-                    try std.Io.File.stdout().writeStreamingAll(io, content.string);
-                }
+            // Final response
+            if (res_msg.content) |content| {
+                try std.fs.File.stdout().writeAll(content);
             }
-            parsed.deinit();
             break;
         }
     }
 }
 
-fn cloneJsonValue(allocator: std.mem.Allocator, val: std.json.Value) !std.json.Value {
-    switch (val) {
-        .null => return .null,
-        .bool => |b| return .{ .bool = b },
-        .integer => |i| return .{ .integer = i },
-        .float => |f| return .{ .float = f },
-        .string => |s| return .{ .string = try allocator.dupe(u8, s) },
-        .array => |a| {
-            var new_arr = std.json.Array.init(allocator);
-            for (a.items) |item| {
-                try new_arr.append(try cloneJsonValue(allocator, item));
-            }
-            return .{ .array = new_arr };
-        },
-        .object => |o| {
-            var new_obj = std.json.ObjectMap.init(allocator);
-            var it = o.iterator();
-            while (it.next()) |entry| {
-                try new_obj.put(try allocator.dupe(u8, entry.key_ptr.*), try cloneJsonValue(allocator, entry.value_ptr.*));
-            }
-            return .{ .object = new_obj };
-        },
-        .number_string => |s| return .{ .number_string = try allocator.dupe(u8, s) },
+fn dupeToolCalls(allocator: std.mem.Allocator, tcs: []const ToolCall) ![]ToolCall {
+    const new_tcs = try allocator.alloc(ToolCall, tcs.len);
+    for (tcs, 0..) |tc, i| {
+        new_tcs[i] = .{
+            .id = try allocator.dupe(u8, tc.id),
+            .type = try allocator.dupe(u8, tc.type),
+            .function = .{
+                .name = try allocator.dupe(u8, tc.function.name),
+                .arguments = try allocator.dupe(u8, tc.function.arguments),
+            },
+        };
     }
+    return new_tcs;
 }
