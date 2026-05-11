@@ -102,10 +102,25 @@ pub fn main(init: std.process.Init) !void {
         @panic("No choices in response");
     }
 
-    // You can use print statements as follows for debugging, they'll be visible when running tests.
-    std.debug.print("Logs from your program will appear here!\n", .{});
+    const message = choices.array.items[0].object.get("message") orelse @panic("No message in response");
+    if (message.object.get("tool_calls")) |tool_calls| {
+        for (tool_calls.array.items) |tool_call| {
+            const func = tool_call.object.get("function").?.object;
+            if (std.mem.eql(u8, func.get("name").?.string, "Read")) {
+                const args_str = func.get("arguments").?.string;
+                const args = try std.json.parseFromSlice(struct { file_path: []const u8 }, allocator, args_str, .{ .ignore_unknown_fields = true });
+                defer args.deinit();
 
-    // TODO: Uncomment the lines below to pass the first stage
-    const content = choices.array.items[0].object.get("message").?.object.get("content").?.string;
-    try std.Io.File.stdout().writeStreamingAll(io, content);
+                const file_content = try std.fs.cwd().readFileAlloc(allocator, args.value.file_path, 1024 * 1024);
+                defer allocator.free(file_content);
+
+                try std.Io.File.stdout().writeStreamingAll(io, file_content);
+            }
+        }
+    } else {
+        const content = message.object.get("content") orelse @panic("No content in response");
+        if (content != .null) {
+            try std.Io.File.stdout().writeStreamingAll(io, content.string);
+        }
+    }
 }
