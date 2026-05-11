@@ -29,8 +29,7 @@ const Response = struct {
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    var args = try std.process.argsWithAllocator(allocator);
-    defer args.deinit();
+    var args = std.process.args();
 
     _ = args.next(); // argv0
     const flag = args.next() orelse {
