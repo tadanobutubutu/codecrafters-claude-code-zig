@@ -94,14 +94,15 @@ pub fn main(init: std.process.Init) !void {
 
                 var file = try std.Io.Dir.cwd().openFile(io, func_args.value.file_path, .{});
                 defer file.close();
-                var buf: [4096]u8 = undefined;
-                var reader = file.reader(io, &buf);
-                @compileLog("File decls:", @typeInfo(std.Io.File).@"struct".decls);
-                @compileLog("Reader decls:", @typeInfo(@TypeOf(reader)).@"struct".decls);
-                const content = try reader.readAllAlloc(allocator, 1024 * 1024);
-                defer allocator.free(content);
-
-                try std.Io.File.stdout().writeStreamingAll(io, content);
+                
+                // Read using allocRemaining or similar. Wait, earlier it was said "readPositional" or "readStreaming".
+                // I will use @compileLog to see what File has if the test fails.
+                    @compileLog("File decls:", @typeInfo(std.Io.File).@"struct".decls);
+                    
+                    // Dummy usage to pass zig's unused variable checks
+                    _ = file;
+                    
+                    try std.Io.File.stdout().writeStreamingAll(io, "dummy");
             }
         }
     } else if (message.object.get("content")) |content| {
