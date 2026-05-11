@@ -1,38 +1,41 @@
 const std = @import("std");
 
-pub fn main() !void {
-    var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    defer arena.deinit();
-    const allocator = arena.allocator();
-    @compileError(@import("builtin").zig_version_string);
+pub fn main(init: std.process.Init) !void {
+    const allocator = init.gpa;
+    const io = init.io;
 
-    var args_it = try std.process.argsWithAllocator(allocator);
-    defer args_it.deinit();
+    var arg_it = try std.process.Args.Iterator.initAllocator(init.minimal.args, allocator);
+    defer arg_it.deinit();
 
-    _ = args_it.next();
-    _ = args_it.next();
-    const prompt_str = args_it.next() orelse return;
+    _ = arg_it.next(); // argv0
+    const flag = arg_it.next() orelse @panic("Usage: main -p <prompt>");
+    const prompt_str = arg_it.next() orelse @panic("Usage: main -p <prompt>");
+    if (!std.mem.eql(u8, flag, "-p")) {
+        @panic("Usage: main -p <prompt>");
+    }
 
-    const api_key = std.posix.getenv("OPENROUTER_API_KEY") orelse return;
-    const base_url = std.posix.getenv("OPENROUTER_BASE_URL") orelse "https://openrouter.ai/api/v1";
+    const api_key = init.environ_map.get("OPENROUTER_API_KEY") orelse @panic("OPENROUTER_API_KEY is not set");
+    const base_url = init.environ_map.get("OPENROUTER_BASE_URL") orelse "https://openrouter.ai/api/v1";
 
-    var client = std.http.Client{ .allocator = allocator };
+    var client: std.http.Client = .{
+        .allocator = allocator,
+        .io = io,
+    };
     defer client.deinit();
 
     const uri_str = try std.fmt.allocPrint(allocator, "{s}/chat/completions", .{base_url});
     defer allocator.free(uri_str);
-    const uri = try std.Uri.parse(uri_str);
 
-    var body_buf = std.ArrayList(u8).empty;
-    defer body_buf.deinit(allocator);
-
-    // Advertise Read tool
-    try body_buf.writer(allocator).print("{f}", .{std.json.fmt(.{
+    // Build request body
+    var body_out: std.Io.Writer.Allocating = .init(allocator);
+    defer body_out.deinit();
+    var jw: std.json.Stringify = .{ .writer = &body_out.writer };
+    try jw.write(.{
         .model = "anthropic/claude-3.5-sonnet",
-        .messages = &.{
+        .messages = &[_]struct { role: []const u8, content: []const u8 }{
             .{ .role = "user", .content = prompt_str },
         },
-        .tools = &.{
+        .tools = &[_]struct { type: []const u8, function: struct { name: []const u8, description: []const u8, parameters: struct { type: []const u8, properties: struct { file_path: struct { type: []const u8, description: []const u8 } }, required: []const []const u8 } } }{
             .{
                 .type = "function",
                 .function = .{
@@ -46,37 +49,39 @@ pub fn main() !void {
                                 .description = "The path to the file to read",
                             },
                         },
-                        .required = &.{ "file_path" },
+                        .required = &[_][]const u8{"file_path"},
                     },
                 },
             },
         },
-    }, .{})});
+    });
+    const body = body_out.written();
 
-    var response_buf = std.ArrayListUnmanaged(u8).empty;
-    var response_alloc_writer = std.io.Writer.Allocating.fromArrayList(allocator, &response_buf);
-    defer response_alloc_writer.deinit();
+    const auth_value = try std.fmt.allocPrint(allocator, "Bearer {s}", .{api_key});
+    defer allocator.free(auth_value);
 
-    const auth_header = try std.fmt.allocPrint(allocator, "Bearer {s}", .{api_key});
-    defer allocator.free(auth_header);
+    var response_out: std.Io.Writer.Allocating = .init(allocator);
+    defer response_out.deinit();
 
     _ = try client.fetch(.{
+        .location = .{ .url = uri_str },
         .method = .POST,
-        .location = .{ .uri = uri },
-        .payload = body_buf.items,
+        .payload = body,
         .extra_headers = &.{
-            .{ .name = "Content-Type", .value = "application/json" },
-            .{ .name = "Authorization", .value = auth_header },
+            .{ .name = "content-type", .value = "application/json" },
+            .{ .name = "authorization", .value = auth_value },
         },
-        .response_writer = &response_alloc_writer.writer,
+        .response_writer = &response_out.writer,
     });
+    const response_body = response_out.written();
 
-    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, response_alloc_writer.written(), .{ .ignore_unknown_fields = true });
+    // Parse response
+    const parsed = try std.json.parseFromSlice(std.json.Value, allocator, response_body, .{ .ignore_unknown_fields = true });
     defer parsed.deinit();
 
-    const choices = parsed.value.object.get("choices") orelse return;
+    const choices = parsed.value.object.get("choices") orelse @panic("No choices");
     const choice = choices.array.items[0];
-    const message = choice.object.get("message") orelse return;
+    const message = choice.object.get("message") orelse @panic("No message");
 
     if (message.object.get("tool_calls")) |tool_calls| {
         for (tool_calls.array.items) |tool_call| {
@@ -90,12 +95,12 @@ pub fn main() !void {
                 const content = try std.fs.cwd().readFileAlloc(allocator, func_args.value.file_path, 1024 * 1024);
                 defer allocator.free(content);
 
-                try std.fs.File.stdout().writeAll(content);
+                try std.Io.File.stdout().writeStreamingAll(io, content);
             }
         }
     } else if (message.object.get("content")) |content| {
         if (content == .string) {
-            try std.fs.File.stdout().writeAll(content.string);
+            try std.Io.File.stdout().writeStreamingAll(io, content.string);
         }
     }
 }
