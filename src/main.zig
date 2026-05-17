@@ -260,31 +260,28 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
 
                         var tool_output: []const u8 = "Error executing command";
 
-                        var child = std.process.Child.init(
-                            &[_][]const u8{ "/bin/sh", "-c", command },
-                            allocator,
-                        );
-                        child.stdout_behavior = .Pipe;
-                        child.stderr_behavior = .Pipe;
+                        // Use the higher-level run API which is more stable across Zig std versions.
+                        const run_result = std.process.run(.{
+                            .allocator = allocator,
+                            .argv = &[_][]const u8{ "/bin/sh", "-c", command },
+                        }) catch |err| {
+                            // On error, append an error message and continue.
+                            const err_msg = try std.fmt.allocPrint(allocator, "Error executing command: {any}", .{err});
+                            try messages.append(allocator, .{
+                                .role = try allocator.dupe(u8, "tool"),
+                                .tool_call_id = try allocator.dupe(u8, tool_call.id),
+                                .content = err_msg,
+                            });
+                            continue;
+                        };
 
-                        if (child.spawn()) |_| {
-                            const stdout_bytes = child.stdout.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
-                            const stderr_bytes = child.stderr.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
-                            _ = child.wait() catch {};
-
-                            var output_buf = std.ArrayListUnmanaged(u8).empty;
-                            if (stdout_bytes.len > 0) {
-                                output_buf.appendSlice(allocator, stdout_bytes) catch {};
-                            }
-                            if (stderr_bytes.len > 0) {
-                                if (output_buf.items.len > 0) output_buf.append(allocator, '\n') catch {};
-                                output_buf.appendSlice(allocator, stderr_bytes) catch {};
-                            }
-                            if (output_buf.items.len == 0) {
-                                output_buf.appendSlice(allocator, "Command executed successfully (no output)") catch {};
-                            }
-                            tool_output = output_buf.toOwnedSlice(allocator) catch "Error executing command";
-                        } else |_| {}
+                        if (run_result.stdout.len > 0) {
+                            tool_output = run_result.stdout;
+                        } else if (run_result.stderr.len > 0) {
+                            tool_output = run_result.stderr;
+                        } else {
+                            tool_output = "Command executed successfully (no output)";
+                        }
 
                         try messages.append(allocator, .{
                             .role = try allocator.dupe(u8, "tool"),
@@ -397,4 +394,3 @@ else
             try main015();
         }
     }.main;
-
