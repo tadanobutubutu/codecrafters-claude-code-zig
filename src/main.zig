@@ -197,21 +197,23 @@ pub const main = if (@hasDecl(std.process, "Init"))
     struct {
         fn main016(init: std.process.Init) !void {
             comptime {
-                var msg: []const u8 = "";
-                
                 const client_fields = @typeInfo(std.http.Client).@"struct".fields;
-                msg = msg ++ "Client fields:\n";
+                var io_type_name: []const u8 = "not found";
                 for (client_fields) |f| {
-                    msg = msg ++ "  " ++ f.name ++ " : " ++ @typeName(f.type) ++ "\n";
+                    if (std.mem.eql(u8, f.name, "io")) {
+                        io_type_name = @typeName(f.type);
+                    }
                 }
-
+                
                 const init_fields = @typeInfo(std.process.Init).@"struct".fields;
-                msg = msg ++ "Init fields:\n";
+                var io_init_type: []const u8 = "not found";
                 for (init_fields) |f| {
-                    msg = msg ++ "  " ++ f.name ++ " : " ++ @typeName(f.type) ++ "\n";
+                    if (std.mem.eql(u8, f.name, "io")) {
+                        io_init_type = @typeName(f.type);
+                    }
                 }
 
-                @compileError(msg);
+                @compileError("Client.io: " ++ io_type_name ++ ", Init.io: " ++ io_init_type);
             }
             const allocator = init.arena.allocator();
 
