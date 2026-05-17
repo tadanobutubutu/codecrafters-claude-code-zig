@@ -252,48 +252,76 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
                         .tool_call_id = try allocator.dupe(u8, tool_call.id),
                         .content = res_msg_str,
                     });
-                } else if (std.mem.eql(u8, tool_call.function.name, "Bash")) {
-                    const args_parsed = try std.json.parseFromSlice(struct { command: []const u8 }, allocator, tool_call.function.arguments, .{ .ignore_unknown_fields = true });
-                    defer args_parsed.deinit();
+                    } else if (std.mem.eql(u8, tool_call.function.name, "Bash")) {
+                        const args_parsed = try std.json.parseFromSlice(struct { command: []const u8 }, allocator, tool_call.function.arguments, .{ .ignore_unknown_fields = true });
+                        defer args_parsed.deinit();
 
-                    const command = args_parsed.value.command;
+                        const command = args_parsed.value.command;
 
-                    var tool_output: []const u8 = "Error executing command";
+                        var tool_output: []const u8 = "Error executing command";
 
-                    if (@TypeOf(io) == void) {
-                        var child = std.process.Child.init(
-                            &.{ "/bin/sh", "-c", command },
-                            allocator,
-                        );
-                        child.stdout_behavior = .Pipe;
-                        child.stderr_behavior = .Pipe;
+                        if (@TypeOf(io) == void) {
+                            var child = std.process.Child.init(
+                                &.{ "/bin/sh", "-c", command },
+                                allocator,
+                            );
+                            child.stdout_behavior = .Pipe;
+                            child.stderr_behavior = .Pipe;
 
-                        if (child.spawn()) |_| {
-                            const stdout_bytes = child.stdout.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
-                            const stderr_bytes = child.stderr.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
-                            _ = child.wait() catch {};
+                            if (child.spawn()) |_| {
+                                const stdout_bytes = child.stdout.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
+                                const stderr_bytes = child.stderr.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
+                                _ = child.wait() catch {};
 
-                            var output_buf = std.ArrayListUnmanaged(u8).empty;
-                            if (stdout_bytes.len > 0) {
-                                output_buf.appendSlice(allocator, stdout_bytes) catch {};
-                            }
-                            if (stderr_bytes.len > 0) {
-                                if (output_buf.items.len > 0) output_buf.append(allocator, '\n') catch {};
-                                output_buf.appendSlice(allocator, stderr_bytes) catch {};
-                            }
-                            if (output_buf.items.len == 0) {
-                                output_buf.appendSlice(allocator, "Command executed successfully (no output)") catch {};
-                            }
-                            tool_output = output_buf.toOwnedSlice(allocator) catch "Error executing command";
-                        } else |_| {}
+                                var output_buf = std.ArrayListUnmanaged(u8).empty;
+                                if (stdout_bytes.len > 0) {
+                                    output_buf.appendSlice(allocator, stdout_bytes) catch {};
+                                }
+                                if (stderr_bytes.len > 0) {
+                                    if (output_buf.items.len > 0) output_buf.append(allocator, '\n') catch {};
+                                    output_buf.appendSlice(allocator, stderr_bytes) catch {};
+                                }
+                                if (output_buf.items.len == 0) {
+                                    output_buf.appendSlice(allocator, "Command executed successfully (no output)") catch {};
+                                }
+                                tool_output = output_buf.toOwnedSlice(allocator) catch "Error executing command";
+                            } else |_| {}
+                        } else {
+                            const Io = std.Io;
+                            var child = Io.Process.init(
+                                &.{ "/bin/sh", "-c", command },
+                                allocator,
+                            );
+                            child.stdout_behavior = .Pipe;
+                            child.stderr_behavior = .Pipe;
+
+                            if (child.spawn(io)) |_| {
+                                const stdout_bytes = child.stdout.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
+                                const stderr_bytes = child.stderr.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
+                                _ = child.wait(io) catch {};
+
+                                var output_buf = std.ArrayListUnmanaged(u8).empty;
+                                if (stdout_bytes.len > 0) {
+                                    output_buf.appendSlice(allocator, stdout_bytes) catch {};
+                                }
+                                if (stderr_bytes.len > 0) {
+                                    if (output_buf.items.len > 0) output_buf.append(allocator, '\n') catch {};
+                                    output_buf.appendSlice(allocator, stderr_bytes) catch {};
+                                }
+                                if (output_buf.items.len == 0) {
+                                    output_buf.appendSlice(allocator, "Command executed successfully (no output)") catch {};
+                                }
+                                tool_output = output_buf.toOwnedSlice(allocator) catch "Error executing command";
+                            } else |_| {}
+                        }
+
+                        try messages.append(allocator, .{
+                            .role = try allocator.dupe(u8, "tool"),
+                            .tool_call_id = try allocator.dupe(u8, tool_call.id),
+                            .content = try allocator.dupe(u8, tool_output),
+                        });
                     }
 
-                    try messages.append(allocator, .{
-                        .role = try allocator.dupe(u8, "tool"),
-                        .tool_call_id = try allocator.dupe(u8, tool_call.id),
-                        .content = try allocator.dupe(u8, tool_output),
-                    });
-                }
             }
             // Continue loop to feed tool results back to LLM
         } else {
