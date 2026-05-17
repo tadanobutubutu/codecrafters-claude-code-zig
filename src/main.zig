@@ -260,7 +260,7 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
 
                         var tool_output: []const u8 = "Error executing command";
 
-                        var child = std.process.Child.init(
+                        var child = try std.process.Child.init(
                             &.{ "/bin/sh", "-c", command },
                             allocator,
                         );
