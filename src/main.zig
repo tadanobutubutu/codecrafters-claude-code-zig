@@ -29,17 +29,16 @@ const Response = struct {
 pub fn main() !void {
     const allocator = std.heap.page_allocator;
 
-    var args = std.process.args();
+    const args = try std.process.argsAlloc(allocator);
+    defer std.process.argsFree(allocator, args);
 
-    _ = args.next(); // argv0
-    const flag = args.next() orelse {
+    if (args.len < 3) {
         std.debug.print("Usage: main -p <prompt>\n", .{});
         return;
-    };
-    const prompt_str = args.next() orelse {
-        std.debug.print("Usage: main -p <prompt>\n", .{});
-        return;
-    };
+    }
+    const flag = args[1];
+    const prompt_str = args[2];
+
     if (!std.mem.eql(u8, flag, "-p")) {
         std.debug.print("Usage: main -p <prompt>\n", .{});
         return;
