@@ -41,7 +41,7 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
     defer allocator.free(auth_value);
 
     // Initial message history
-    var messages = std.ArrayListUnmanaged(Message){};
+    var messages = std.ArrayListUnmanaged(Message).empty;
     defer {
         for (messages.items) |msg| {
             allocator.free(msg.role);
