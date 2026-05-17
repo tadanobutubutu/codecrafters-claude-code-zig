@@ -287,18 +287,17 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
                                 tool_output = output_buf.toOwnedSlice(allocator) catch "Error executing command";
                             } else |_| {}
                         } else {
-                            const Io = std.Io;
-                            var child = Io.Process.init(
+                            var child = std.process.Child.init(
                                 &.{ "/bin/sh", "-c", command },
                                 allocator,
                             );
                             child.stdout_behavior = .Pipe;
                             child.stderr_behavior = .Pipe;
 
-                            if (child.spawn(io)) |_| {
+                            if (child.spawn()) |_| {
                                 const stdout_bytes = child.stdout.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
                                 const stderr_bytes = child.stderr.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
-                                _ = child.wait(io) catch {};
+                                _ = child.wait() catch {};
 
                                 var output_buf = std.ArrayListUnmanaged(u8).empty;
                                 if (stdout_bytes.len > 0) {
