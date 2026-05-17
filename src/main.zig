@@ -26,42 +26,7 @@ const Response = struct {
     },
 };
 
-pub fn main() !void {
-    const allocator = std.heap.page_allocator;
-
-    var args = try std.process.argsWithAllocator(allocator);
-    defer args.deinit();
-
-    _ = args.skip(); // argv0
-    const flag = args.next() orelse {
-        std.debug.print("Usage: main -p <prompt>\n", .{});
-        return;
-    };
-    const prompt_str = args.next() orelse {
-        std.debug.print("Usage: main -p <prompt>\n", .{});
-        return;
-    };
-
-    if (!std.mem.eql(u8, flag, "-p")) {
-        std.debug.print("Usage: main -p <prompt>\n", .{});
-        return;
-    }
-
-    const api_key = std.process.getEnvVarOwned(allocator, "OPENROUTER_API_KEY") catch |err| switch (err) {
-        error.EnvironmentVariableNotFound => {
-            std.debug.print("OPENROUTER_API_KEY is not set\n", .{});
-            return err;
-        },
-        else => return err,
-    };
-    defer allocator.free(api_key);
-
-    const base_url = std.process.getEnvVarOwned(allocator, "OPENROUTER_BASE_URL") catch |err| switch (err) {
-        error.EnvironmentVariableNotFound => try allocator.dupe(u8, "https://openrouter.ai/api/v1"),
-        else => return err,
-    };
-    defer allocator.free(base_url);
-
+fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []const u8, base_url: []const u8) !void {
     var client = std.http.Client{ .allocator = allocator };
     defer client.deinit();
 
@@ -99,11 +64,11 @@ pub fn main() !void {
 
     while (true) {
         // Build request body
-        var body_buf = std.io.Writer.Allocating.init(allocator);
+        var body_buf = std.Io.Writer.Allocating.init(allocator);
         defer body_buf.deinit();
 
         try std.json.Stringify.value(.{
-            .model = "anthropic/claude-haiku-4.5",
+            .model = "anthropic/claude-3-5-haiku",
             .messages = messages.items,
             .tools = &[_]struct {
                 type: []const u8,
@@ -142,7 +107,7 @@ pub fn main() !void {
             },
         }, .{ .emit_null_optional_fields = false }, &body_buf.writer);
 
-        var response_buf = std.io.Writer.Allocating.init(allocator);
+        var response_buf = std.Io.Writer.Allocating.init(allocator);
         defer response_buf.deinit();
 
         const fetch_res = try client.fetch(.{
@@ -227,3 +192,82 @@ fn dupeToolCalls(allocator: std.mem.Allocator, tcs: []const ToolCall) ![]ToolCal
     }
     return new_tcs;
 }
+
+pub const main = if (@hasDecl(std.process, "Init"))
+    struct {
+        fn main016(init: std.process.Init) !void {
+            const allocator = init.arena.allocator();
+
+            const args = try init.minimal.args.toSlice(allocator);
+            if (args.len < 3) {
+                std.debug.print("Usage: main -p <prompt>\n", .{});
+                return;
+            }
+            const flag = args[1];
+            const prompt_str = args[2];
+
+            if (!std.mem.eql(u8, flag, "-p")) {
+                std.debug.print("Usage: main -p <prompt>\n", .{});
+                return;
+            }
+
+            const api_key = init.environ_map.get("OPENROUTER_API_KEY") orelse {
+                std.debug.print("OPENROUTER_API_KEY is not set\n", .{});
+                return error.EnvironmentVariableNotFound;
+            };
+
+            const base_url = init.environ_map.get("OPENROUTER_BASE_URL") orelse "https://openrouter.ai/api/v1";
+
+            try runAgent(allocator, prompt_str, api_key, base_url);
+        }
+
+        pub fn main(init: std.process.Init) !void {
+            try main016(init);
+        }
+    }.main
+else
+    struct {
+        fn main015() !void {
+            const allocator = std.heap.page_allocator;
+
+            var args = try std.process.argsWithAllocator(allocator);
+            defer args.deinit();
+
+            _ = args.skip(); // argv0
+            const flag = args.next() orelse {
+                std.debug.print("Usage: main -p <prompt>\n", .{});
+                return;
+            };
+            const prompt_str = args.next() orelse {
+                std.debug.print("Usage: main -p <prompt>\n", .{});
+                return;
+            };
+
+            if (!std.mem.eql(u8, flag, "-p")) {
+                std.debug.print("Usage: main -p <prompt>\n", .{});
+                return;
+            }
+
+            const api_key = std.process.getEnvVarOwned(allocator, "OPENROUTER_API_KEY") catch |err| switch (err) {
+                error.EnvironmentVariableNotFound => {
+                    std.debug.print("OPENROUTER_API_KEY is not set\n", .{});
+                    return err;
+                },
+                else => return err,
+            };
+            defer allocator.free(api_key);
+
+            const base_url = std.process.getEnvVarOwned(allocator, "OPENROUTER_BASE_URL") catch |err| switch (err) {
+                error.EnvironmentVariableNotFound => try allocator.dupe(u8, "https://openrouter.ai/api/v1"),
+                else => return err,
+            };
+            defer allocator.free(base_url);
+
+            try runAgent(allocator, prompt_str, api_key, base_url);
+        }
+
+        pub fn main() !void {
+            try main015();
+        }
+    }.main;
+
