@@ -260,12 +260,12 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
 
                         var tool_output: []const u8 = "Error executing command";
 
-                        var child = std.process.Child.init(
-                            &[_][]const u8{ "/bin/sh", "-c", command },
-                            allocator,
-                        );
-                        child.stdout_behavior = .Pipe;
-                        child.stderr_behavior = .Pipe;
+                        var child = std.process.Child{
+                            .argv = &[_][]const u8{ "/bin/sh", "-c", command },
+                            .allocator = allocator,
+                            .stdout_behavior = .Pipe,
+                            .stderr_behavior = .Pipe,
+                        };
 
                         if (child.spawn()) |_| {
                             const stdout_bytes = child.stdout.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
