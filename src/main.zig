@@ -261,8 +261,8 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
                         var tool_output: []const u8 = "Error executing command";
 
                         // Use the higher-level run API which is more stable across Zig std versions.
-                        const run_result = std.process.run(.{
-                            .allocator = allocator,
+                        // Call std.process.run in the CI-compatible form (allocator, io, options)
+                        const run_result = std.process.run(allocator, io, .{
                             .argv = &[_][]const u8{ "/bin/sh", "-c", command },
                         }) catch |err| {
                             // On error, append an error message and continue.
