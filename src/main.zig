@@ -26,6 +26,15 @@ const Response = struct {
     },
 };
 
+fn readFileAlloc(allocator: std.mem.Allocator, file_path: []const u8, io: anytype) ![]u8 {
+    if (@TypeOf(io) == void) {
+        return try std.fs.cwd().readFileAlloc(allocator, file_path, 1024 * 1024);
+    } else {
+        const Io = std.Io;
+        return try Io.Dir.readFileAlloc(Io.Dir.cwd(), io, file_path, allocator, 1024 * 1024);
+    }
+}
+
 fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []const u8, base_url: []const u8, io: anytype) !void {
     var client = if (@TypeOf(io) == void)
         std.http.Client{ .allocator = allocator }
@@ -152,7 +161,7 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
                     defer args_parsed.deinit();
 
                     const file_path = args_parsed.value.file_path;
-                    const content = std.fs.cwd().readFileAlloc(allocator, file_path, 1024 * 1024) catch |err| {
+                    const content = readFileAlloc(allocator, file_path, io) catch |err| {
                         const err_msg = try std.fmt.allocPrint(allocator, "Error reading file: {any}", .{err});
                         try messages.append(allocator, .{
                             .role = try allocator.dupe(u8, "tool"),
