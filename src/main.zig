@@ -196,6 +196,23 @@ fn dupeToolCalls(allocator: std.mem.Allocator, tcs: []const ToolCall) ![]ToolCal
 pub const main = if (@hasDecl(std.process, "Init"))
     struct {
         fn main016(init: std.process.Init) !void {
+            comptime {
+                var msg: []const u8 = "";
+                
+                const client_fields = @typeInfo(std.http.Client).@"struct".fields;
+                msg = msg ++ "Client fields:\n";
+                for (client_fields) |f| {
+                    msg = msg ++ "  " ++ f.name ++ " : " ++ @typeName(f.type) ++ "\n";
+                }
+
+                const init_fields = @typeInfo(std.process.Init).@"struct".fields;
+                msg = msg ++ "Init fields:\n";
+                for (init_fields) |f| {
+                    msg = msg ++ "  " ++ f.name ++ " : " ++ @typeName(f.type) ++ "\n";
+                }
+
+                @compileError(msg);
+            }
             const allocator = init.arena.allocator();
 
             const args = try init.minimal.args.toSlice(allocator);
