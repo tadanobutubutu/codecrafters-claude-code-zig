@@ -1,0 +1,49 @@
+remote: ------------------------------------------------------------------------        
+remote: 
+remote: 
+remote: [32m     ___            _          ___              __  _                   [0m        
+remote: [32m    / __\ ___    __| |  ___   / __\_ __  __ _  / _|| |_  ___  _ __  ___ [0m        
+remote: [32m   / /   / _ \  / _` | / _ \ / /  | '__|/ _` || |_ | __|/ _ \| '__|/ __|[0m        
+remote: [32m  / /___| (_) || (_| ||  __// /___| |  | (_| ||  _|| |_|  __/| |   \__ [0m        
+remote: [32m  \____/ \___/  \__,_| \___|\____/|_|   \__,_||_|   \__|\___||_|   |___/[0m        
+remote: 
+remote: 
+remote:    Welcome to [32mCodeCrafters[0m! Your commit was received successfully.        
+remote: 
+remote: ------------------------------------------------------------------------        
+remote: 
+remote: [32m⚡ This is a turbo test run. https://codecrafters.io/turbo[0m        
+remote: 
+remote: Running tests on your code. Logs should appear shortly...        
+remote: 
+remote: [33m[compile][0m Moved ./.codecrafters/run.sh → ./your_program.sh        
+remote: [33m[compile][0m [32mCompilation successful.[0m        
+remote: 
+remote: [33m[tester::#AQ1] [0m[94mRunning tests for Stage #AQ1 (Advertise the read tool)[0m        
+remote: [33m[tester::#AQ1] [0m[94m$ ./your_program.sh -p 'Give the number of tools accessible in this request. Respond with only a number.'[0m        
+remote: [33m[your_program] [0m[0mStatus: 200[0m        
+remote: [33m[your_program] [0m[0mBody: [0m        
+remote: [33m[your_program] [0m[0m         [0m        
+remote: [33m[your_program] [0m[0m{"id":"gen-1778524979-Aj7NKZKdaGOfH0Lhsbsn","object":"chat.completion","created":1778524979,"model":"anthropic/claude-4.5-haiku-20251001","provider":"Amazon Bedrock","system_fingerprint":null,"choices":[{"index":0,"logprobs":null,"finish_reason":"stop","native_finish_reason":"end_turn","message":{"role":"assistant","content":"1","refusal":null,"reasoning":null}}],"usage":{"prompt_tokens":590,"completion_tokens":5,"total_tokens":595,"cost":0.00060885,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0.000615,"upstream_inference_prompt_cost":0.00059,"upstream_inference_completions_cost":0.000025},"completion_tokens_details":{"reasoning_tokens":0,"image_tokens":0,"audio_tokens":0}}}[0m        
+remote: [33m[your_program] [0m[0m1[0m        
+remote: [33m[tester::#AQ1] [0m[92m✔ Value is at least 1[0m        
+remote: [33m[tester::#AQ1] [0m[92mTest passed.[0m        
+remote: 
+remote: [33m[tester::#YY2] [0m[94mRunning tests for Stage #YY2 (Communicate with the LLM)[0m        
+remote: [33m[tester::#YY2] [0m[94m$ ./your_program.sh -p 'Calculate 4 * 6. Respond with only a number.'[0m        
+remote: [33m[your_program] [0m[0mStatus: 200[0m        
+remote: [33m[your_program] [0m[0mBody: [0m        
+remote: [33m[your_program] [0m[0m         [0m        
+remote: [33m[your_program] [0m[0m[0m        
+remote: [33m[your_program] [0m[0m         [0m        
+remote: [33m[your_program] [0m[0m{"id":"gen-1778524980-eHkW7YimsUJJMprVHV4V","object":"chat.completion","created":1778524980,"model":"anthropic/claude-4.5-haiku-20251001","provider":"Amazon Bedrock","system_fingerprint":null,"choices":[{"index":0,"logprobs":null,"finish_reason":"stop","native_finish_reason":"end_turn","message":{"role":"assistant","content":"24","refusal":null,"reasoning":null}}],"usage":{"prompt_tokens":588,"completion_tokens":5,"total_tokens":593,"cost":0.00060687,"is_byok":false,"prompt_tokens_details":{"cached_tokens":0,"cache_write_tokens":0,"audio_tokens":0,"video_tokens":0},"cost_details":{"upstream_inference_cost":0.000613,"upstream_inference_prompt_cost":0.000588,"upstream_inference_completions_cost":0.000025},"completion_tokens_details":{"reasoning_tokens":0,"image_tokens":0,"audio_tokens":0}}}[0m        
+remote: [33m[your_program] [0m[0m24[0m        
+remote: [33m[tester::#YY2] [0m[92m✔ Value is "24"[0m        
+remote: [33m[tester::#YY2] [0m[92mTest passed.[0m        
+remote: 
+remote: Test passed. Congrats!        
+remote: 
+remote: [32mMark step as complete in your browser.[0m        
+remote: 
+To https://git.codecrafters.io/92435dde52995f3c
+   f544eb6..5431e6f  master -> master

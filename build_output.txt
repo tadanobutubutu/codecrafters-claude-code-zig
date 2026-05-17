@@ -1,0 +1,26 @@
+install
++- install main
+   +- compile exe main Debug native 2 errors
+src/main.zig:66:11: error: unused local constant
+    const fetch_res = try client.fetch(.{
+          ^~~~~~~~~
+src/main.zig:3:30: error: root source file struct 'process' has no member named 'Init'
+pub fn main(init: std.process.Init) !void {
+                  ~~~~~~~~~~~^~~~~
+/opt/homebrew/Cellar/zig/0.15.2_1/lib/zig/std/process.zig:1:1: note: struct declared here
+const std = @import("std.zig");
+^~~~~
+referenced by:
+    comptime: /opt/homebrew/Cellar/zig/0.15.2_1/lib/zig/std/start.zig:61:51
+    start: /opt/homebrew/Cellar/zig/0.15.2_1/lib/zig/std/std.zig:110:27
+    1 reference(s) hidden; use '-freference-trace=3' to see all references
+error: the following command failed with 2 compilation errors:
+/opt/homebrew/Cellar/zig/0.15.2_1/bin/zig build-exe "-Mroot=/Users/afif/Documents/\346\232\207\343\201\244\343\201\265\343\202\231\343\201\227\343\201\235\343\201\256\357\274\221/codecrafters-claude-code-zig/src/main.zig" --cache-dir .zig-cache --global-cache-dir /Users/afif/.cache/zig --name main --zig-lib-dir /opt/homebrew/Cellar/zig/0.15.2_1/lib/zig/ --listen=-
+
+Build Summary: 0/3 steps succeeded; 1 failed
+install transitive failure
++- install main transitive failure
+   +- compile exe main Debug native 2 errors
+
+error: the following build command failed with exit code 1:
+.zig-cache/o/4e6050a838c0d1fb9c1db472e27dd83c/build /opt/homebrew/Cellar/zig/0.15.2_1/bin/zig /opt/homebrew/Cellar/zig/0.15.2_1/lib/zig /Users/afif/Documents/暇つぶしその１/codecrafters-claude-code-zig .zig-cache /Users/afif/.cache/zig --seed 0xdc3a1bfc -Z15c230c88fb9a5a8

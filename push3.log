@@ -1,0 +1,40 @@
+remote: ------------------------------------------------------------------------        
+remote: 
+remote: 
+remote: [32m     ___            _          ___              __  _                   [0m        
+remote: [32m    / __\ ___    __| |  ___   / __\_ __  __ _  / _|| |_  ___  _ __  ___ [0m        
+remote: [32m   / /   / _ \  / _` | / _ \ / /  | '__|/ _` || |_ | __|/ _ \| '__|/ __|[0m        
+remote: [32m  / /___| (_) || (_| ||  __// /___| |  | (_| ||  _|| |_|  __/| |   \__ [0m        
+remote: [32m  \____/ \___/  \__,_| \___|\____/|_|   \__,_||_|   \__|\___||_|   |___/[0m        
+remote: 
+remote: 
+remote:    Welcome to [32mCodeCrafters[0m! Your commit was received successfully.        
+remote: 
+remote: ------------------------------------------------------------------------        
+remote: 
+remote: [32m⚡ This is a turbo test run. https://codecrafters.io/turbo[0m        
+remote: 
+remote: Running tests on your code. Logs should appear shortly...        
+remote: 
+remote: [33m[compile][0m Moved ./.codecrafters/run.sh → ./your_program.sh        
+remote: [33m[compile][0m [32mCompilation successful.[0m        
+remote: 
+remote: [33m[tester::#AQ1] [0m[94mRunning tests for Stage #AQ1 (Advertise the read tool)[0m        
+remote: [33m[tester::#AQ1] [0m[94m$ ./your_program.sh -p 'How many tools are available to you in this request? Respond with only a number.'[0m        
+remote: [33m[your_program] [0m[0mthread 43 panic: No choices[0m        
+remote: [33m[your_program] [0m[0m/app/src/main.zig:82:63: 0x11fe0bc in main (main.zig)[0m        
+remote: [33m[your_program] [0m[0m    const choices = parsed.value.object.get("choices") orelse @panic("No choices");[0m        
+remote: [33m[your_program] [0m[0m                                                              ^[0m        
+remote: [33m[your_program] [0m[0m/usr/local/zig/lib/std/start.zig:737:30: 0x1200dce in callMain (std.zig)[0m        
+remote: [33m[your_program] [0m[0m    return wrapMain(root.main(.{[0m        
+remote: [33m[your_program] [0m[0m                             ^[0m        
+remote: [33m[your_program] [0m[0m/usr/local/zig/lib/std/start.zig:190:5: 0x11fd0e1 in _start (std.zig)[0m        
+remote: [33m[your_program] [0m[0m    asm volatile (switch (native_arch) {[0m        
+remote: [33m[your_program] [0m[0m    ^[0m        
+remote: [33m[tester::#AQ1] [0m[91mExpected program to exit with exit code 0, got 134 instead[0m        
+remote: [33m[tester::#AQ1] [0m[91mTest failed[0m        
+remote: 
+remote: View our article on debugging test failures: https://codecrafters.io/debug        
+remote: 
+To https://git.codecrafters.io/92435dde52995f3c
+   af31155..3d58e58  master -> master

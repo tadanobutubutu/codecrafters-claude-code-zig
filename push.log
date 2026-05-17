@@ -1,0 +1,54 @@
+remote: ------------------------------------------------------------------------        
+remote: 
+remote: 
+remote: [32m     ___            _          ___              __  _                   [0m        
+remote: [32m    / __\ ___    __| |  ___   / __\_ __  __ _  / _|| |_  ___  _ __  ___ [0m        
+remote: [32m   / /   / _ \  / _` | / _ \ / /  | '__|/ _` || |_ | __|/ _ \| '__|/ __|[0m        
+remote: [32m  / /___| (_) || (_| ||  __// /___| |  | (_| ||  _|| |_|  __/| |   \__ [0m        
+remote: [32m  \____/ \___/  \__,_| \___|\____/|_|   \__,_||_|   \__|\___||_|   |___/[0m        
+remote: 
+remote: 
+remote:    Welcome to [32mCodeCrafters[0m! Your commit was received successfully.        
+remote: 
+remote: ------------------------------------------------------------------------        
+remote: 
+remote: [32m⚡ This is a turbo test run. https://codecrafters.io/turbo[0m        
+remote: 
+remote: Running tests on your code. Logs should appear shortly...        
+remote: 
+remote: [33m[compile][0m install        
+remote: [33m[compile][0m +- install main        
+remote: [33m[compile][0m    +- compile exe main Debug native 1 errors        
+remote: [33m[compile][0m src/main.zig:101:43: error: no field or member function named 'readAllAlloc' in 'Io.File.Reader'        
+remote: [33m[compile][0m                 const content = try reader.readAllAlloc(allocator, 1024 * 1024);        
+remote: [33m[compile][0m                                     ~~~~~~^~~~~~~~~~~~~        
+remote: [33m[compile][0m /usr/local/zig/lib/std/Io/File/Reader.zig:1:1: note: struct declared here        
+remote: [33m[compile][0m //! Memoizes key information about a file handle such as:        
+remote: [33m[compile][0m ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~        
+remote: [33m[compile][0m referenced by:        
+remote: [33m[compile][0m     callMain [inlined]: /usr/local/zig/lib/std/start.zig:737:30        
+remote: [33m[compile][0m     callMainWithArgs [inlined]: /usr/local/zig/lib/std/start.zig:638:20        
+remote: [33m[compile][0m     posixCallMainAndExit: /usr/local/zig/lib/std/start.zig:590:38        
+remote: [33m[compile][0m     2 reference(s) hidden; use '-freference-trace=5' to see all references        
+remote: [33m[compile][0m         
+remote: [33m[compile][0m Compile Log Output:        
+remote: [33m[compile][0m @as(*const [11:0]u8, "File decls:"), @as([]const builtin.Type.Declaration, &.{ .{ .name = "Flags"[0..5] }, .{ .name = "Handle"[0..6] }, .{ .name = "Reader"[0..6] }, .{ .name = "Writer"[0..6] }, .{ .name = "Atomic"[0..6] }, .{ .name = "MemoryMap"[0..9] }, .{ .name = "MultiReader"[0..11] }, .{ .name = "INode"[0..5] }, .{ .name = "NLink"[0..5] }, .{ .name = "Uid"[0..3] }, .{ .name = "Gid"[0..3] }, .{ .name = "BlockSize"[0..9] }, .{ .name = "Kind"[0..4] }, .{ .name = "Stat"[0..4] }, .{ .name = "stdout"[0..6] }, .{ .name = "stderr"[0..6] }, .{ .name = "stdin"[0..5] }, .{ .name = "StatError"[0..9] }, .{ .name = "stat"[0..4] }, .{ .name = "OpenMode"[0..8] }, .{ .name = "Lock"[0..4] }, .{ .name = "OpenFlags"[0..9] }, .{ .name = "CreateFlags"[0..11] }, .{ .name = "OpenError"[0..9] }, .{ .name = "close"[0..5] }, .{ .name = "closeMany"[0..9] }, .{ .name = "SyncError"[0..9] }, .{ .name = "sync"[0..4] }, .{ .name = "isTty"[0..5] }, .{ .name = "EnableAnsiEscapeCodesError"[0..26] }, .{ .name = "enableAnsiEscapeCodes"[0..21] }, .{ .name = "supportsAnsiEscapeCodes"[0..23] }, .{ .name = "SetLengthError"[0..14] }, .{ .name = "setLength"[0..9] }, .{ .name = "LengthError"[0..11] }, .{ .name = "length"[0..6] }, .{ .name = "SetPermissionsError"[0..19] }, .{ .name = "setPermissions"[0..14] }, .{ .name = "SetOwnerError"[0..13] }, .{ .name = "setOwner"[0..8] }, .{ .name = "Permissions"[0..11] }, .{ .name = "SetTimestampsError"[0..18] }, .{ .name = "SetTimestampsOptions"[0..20] }, .{ .name = "SetTimestamp"[0..12] }, .{ .name = "setTimestamps"[0..13] }, .{ .name = "setTimestampsNow"[0..16] }, .{ .name = "ReadStreamingError"[0..18] }, .{ .name = "readStreaming"[0..13] }, .{ .name = "ReadPositionalError"[0..19] }, .{ .name = "readPositional"[0..14] }, .{ .name = "WritePositionalError"[0..20] }, .{ .name = "writePositional"[0..15] }, .{ .name = "writePositionalAll"[0..18] }, .{ .name = "SeekError"[0..9] }, .{ .name = "WriteFilePositionalError"[0..24] }, .{ .name = "reader"[0..6] }, .{ .name = "readPositionalAll"[0..17] }, .{ .name = "readerStreaming"[0..15] }, .{ .name = "writer"[0..6] }, .{ .name = "writerStreaming"[0..15] }, .{ .name = "writeStreaming"[0..14] }, .{ .name = "writeStreamingAll"[0..17] }, .{ .name = "LockError"[0..9] }, .{ .name = "lock"[0..4] }, .{ .name = "unlock"[0..6] }, .{ .name = "tryLock"[0..7] }, .{ .name = "DowngradeLockError"[0..18] }, .{ .name = "downgradeLock"[0..13] }, .{ .name = "RealPathError"[0..13] }, .{ .name = "realPath"[0..8] }, .{ .name = "HardLinkOptions"[0..15] }, .{ .name = "HardLinkError"[0..13] }, .{ .name = "hardLink"[0..8] }, .{ .name = "createMemoryMap"[0..15] } }[0..74])        
+remote: [33m[compile][0m @as(*const [13:0]u8, "Reader decls:"), @as([]const builtin.Type.Declaration, &.{ .{ .name = "Error"[0..5] }, .{ .name = "SizeError"[0..9] }, .{ .name = "SeekError"[0..9] }, .{ .name = "Mode"[0..4] }, .{ .name = "initInterface"[0..13] }, .{ .name = "init"[0..4] }, .{ .name = "initSize"[0..8] }, .{ .name = "initStreaming"[0..13] }, .{ .name = "getSize"[0..7] }, .{ .name = "seekBy"[0..6] }, .{ .name = "seekTo"[0..6] }, .{ .name = "logicalPos"[0..10] }, .{ .name = "streamMode"[0..10] }, .{ .name = "atEnd"[0..5] } }[0..14])        
+remote: [33m[compile][0m error: 1 compilation errors        
+remote: [33m[compile][0m failed command: /usr/local/zig/zig build-exe -Mroot=/app/src/main.zig --cache-dir .zig-cache --global-cache-dir /root/.cache/zig --name main --zig-lib-dir /usr/local/zig/lib/ --listen=-        
+remote: [33m[compile][0m         
+remote: [33m[compile][0m Build Summary: 0/3 steps succeeded (1 failed)        
+remote: [33m[compile][0m install transitive failure        
+remote: [33m[compile][0m +- install main transitive failure        
+remote: [33m[compile][0m    +- compile exe main Debug native 1 errors        
+remote: [33m[compile][0m         
+remote: [33m[compile][0m error: the following build command failed with exit code 1:        
+remote: [33m[compile][0m .zig-cache/o/73a3cd1e6cc0bd181b9f605f3722bb96/build /usr/local/zig/zig /usr/local/zig/lib /app .zig-cache /root/.cache/zig --seed 0x65befcd -Zac2d8b398d0def48        
+remote: [33m[compile][0m [31mLooks like your code failed to compile.[0m        
+remote: [33m[compile][0m [31mIf you think this is a CodeCrafters error, please let us know at hello@codecrafters.io.[0m        
+remote: 
+remote: 
+remote: View our article on debugging test failures: https://codecrafters.io/debug        
+remote: 
+To https://git.codecrafters.io/92435dde52995f3c
+   075f93b..63c24ac  master -> master
