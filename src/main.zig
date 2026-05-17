@@ -287,7 +287,7 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
                                 tool_output = output_buf.toOwnedSlice(allocator) catch "Error executing command";
                             } else |_| {}
                         } else {
-                            var child = std.ChildProcess.init(
+                            var child = std.process.Child.init(
                                 &.{ "/bin/sh", "-c", command },
                                 allocator,
                             );
