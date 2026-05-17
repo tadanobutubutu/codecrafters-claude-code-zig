@@ -35,6 +35,16 @@ fn readFileAlloc(allocator: std.mem.Allocator, file_path: []const u8, io: anytyp
     }
 }
 
+fn writeToStdout(content: []const u8, io_ctx: anytype) !void {
+    if (@TypeOf(io_ctx) == void) {
+        const stdout = std.fs.File{ .handle = 1 };
+        try stdout.writeAll(content);
+    } else {
+        const Io = std.Io;
+        try Io.File.stdout().writeStreamingAll(io_ctx, content);
+    }
+}
+
 fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []const u8, base_url: []const u8, io: anytype) !void {
     var client = if (@TypeOf(io) == void)
         std.http.Client{ .allocator = allocator }
@@ -183,7 +193,7 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
         } else {
             // Final response
             if (res_msg.content) |content| {
-                try std.fs.File.stdout().writeAll(content);
+                try writeToStdout(content, io);
             }
             break;
         }
