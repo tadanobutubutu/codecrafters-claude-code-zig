@@ -16,3 +16,12 @@ bin/
 **/.DS_Store
 *.swp
 *~
+
+# Python virtual environment
+.venv/
+
+# Scratch files
+scratch/
+*.log
+cc_autoclick.py
+install_cc.sh

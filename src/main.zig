@@ -92,23 +92,7 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
         try std.json.Stringify.value(.{
             .model = "anthropic/claude-haiku-4.5",
             .messages = messages.items,
-            .tools = &[_]struct {
-                type: []const u8,
-                function: struct {
-                    name: []const u8,
-                    description: []const u8,
-                    parameters: struct {
-                        type: []const u8,
-                        properties: struct {
-                            file_path: struct {
-                                type: []const u8,
-                                description: []const u8,
-                            },
-                        },
-                        required: []const []const u8,
-                    },
-                },
-            }{
+            .tools = .{
                 .{
                     .type = "function",
                     .function = .{
@@ -123,6 +107,44 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
                                 },
                             },
                             .required = &[_][]const u8{"file_path"},
+                        },
+                    },
+                },
+                .{
+                    .type = "function",
+                    .function = .{
+                        .name = "Write",
+                        .description = "Write content to a file",
+                        .parameters = .{
+                            .type = "object",
+                            .properties = .{
+                                .file_path = .{
+                                    .type = "string",
+                                    .description = "The path of the file to write to",
+                                },
+                                .content = .{
+                                    .type = "string",
+                                    .description = "The content to write to the file",
+                                },
+                            },
+                            .required = &[_][]const u8{ "file_path", "content" },
+                        },
+                    },
+                },
+                .{
+                    .type = "function",
+                    .function = .{
+                        .name = "Bash",
+                        .description = "Execute a bash command and return its output",
+                        .parameters = .{
+                            .type = "object",
+                            .properties = .{
+                                .command = .{
+                                    .type = "string",
+                                    .description = "The bash command to execute",
+                                },
+                            },
+                            .required = &[_][]const u8{"command"},
                         },
                     },
                 },
@@ -186,6 +208,101 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
                         .role = try allocator.dupe(u8, "tool"),
                         .tool_call_id = try allocator.dupe(u8, tool_call.id),
                         .content = content,
+                    });
+                } else if (std.mem.eql(u8, tool_call.function.name, "Write")) {
+                    const args_parsed = try std.json.parseFromSlice(struct { file_path: []const u8, content: []const u8 }, allocator, tool_call.function.arguments, .{ .ignore_unknown_fields = true });
+                    defer args_parsed.deinit();
+
+                    const file_path = args_parsed.value.file_path;
+                    const content = args_parsed.value.content;
+
+                    if (std.fs.path.dirname(file_path)) |dir| {
+                        if (@TypeOf(io) == void) {
+                            std.fs.cwd().makePath(dir) catch {};
+                        }
+                    }
+
+                    const success = if (@TypeOf(io) == void) write: {
+                        var file = std.fs.cwd().createFile(file_path, .{}) catch break :write false;
+                        if (@TypeOf(io) == void) {
+                            file.close();
+                        } else {
+                            file.close(io);
+                        }
+
+
+                        file.writeAll(content) catch break :write false;
+                        break :write true;
+                    } else write: {
+                        const Io = std.Io;
+                        var file = Io.Dir.createFile(Io.Dir.cwd(), io, file_path, .{}) catch break :write false;
+                        if (@TypeOf(io) == void) {
+                            file.close();
+                        } else {
+                            file.close(io);
+                        }
+
+
+                        file.writeStreamingAll(io, content) catch break :write false;
+                        break :write true;
+                    };
+
+                    if (!success) {
+                        const err_msg = try allocator.dupe(u8, "Error writing file");
+                        try messages.append(allocator, .{
+                            .role = try allocator.dupe(u8, "tool"),
+                            .tool_call_id = try allocator.dupe(u8, tool_call.id),
+                            .content = err_msg,
+                        });
+                        continue;
+                    }
+
+                    const res_msg_str = try allocator.dupe(u8, "Success");
+                    try messages.append(allocator, .{
+                        .role = try allocator.dupe(u8, "tool"),
+                        .tool_call_id = try allocator.dupe(u8, tool_call.id),
+                        .content = res_msg_str,
+                    });
+                } else if (std.mem.eql(u8, tool_call.function.name, "Bash")) {
+                    const args_parsed = try std.json.parseFromSlice(struct { command: []const u8 }, allocator, tool_call.function.arguments, .{ .ignore_unknown_fields = true });
+                    defer args_parsed.deinit();
+
+                    const command = args_parsed.value.command;
+
+                    var tool_output: []const u8 = "Error executing command";
+
+                    if (@TypeOf(io) == void) {
+                        var child = std.process.Child.init(
+                            &.{ "/bin/sh", "-c", command },
+                            allocator,
+                        );
+                        child.stdout_behavior = .Pipe;
+                        child.stderr_behavior = .Pipe;
+
+                        if (child.spawn()) |_| {
+                            const stdout_bytes = child.stdout.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
+                            const stderr_bytes = child.stderr.?.readToEndAlloc(allocator, 1024 * 1024) catch "";
+                            _ = child.wait() catch {};
+
+                            var output_buf = std.ArrayListUnmanaged(u8).empty;
+                            if (stdout_bytes.len > 0) {
+                                output_buf.appendSlice(allocator, stdout_bytes) catch {};
+                            }
+                            if (stderr_bytes.len > 0) {
+                                if (output_buf.items.len > 0) output_buf.append(allocator, '\n') catch {};
+                                output_buf.appendSlice(allocator, stderr_bytes) catch {};
+                            }
+                            if (output_buf.items.len == 0) {
+                                output_buf.appendSlice(allocator, "Command executed successfully (no output)") catch {};
+                            }
+                            tool_output = output_buf.toOwnedSlice(allocator) catch "Error executing command";
+                        } else |_| {}
+                    }
+
+                    try messages.append(allocator, .{
+                        .role = try allocator.dupe(u8, "tool"),
+                        .tool_call_id = try allocator.dupe(u8, tool_call.id),
+                        .content = try allocator.dupe(u8, tool_output),
                     });
                 }
             }
