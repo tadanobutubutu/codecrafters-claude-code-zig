@@ -26,8 +26,11 @@ const Response = struct {
     },
 };
 
-fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []const u8, base_url: []const u8) !void {
-    var client = std.http.Client{ .allocator = allocator };
+fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []const u8, base_url: []const u8, io: anytype) !void {
+    var client = if (@TypeOf(io) == void)
+        std.http.Client{ .allocator = allocator }
+    else
+        std.http.Client{ .allocator = allocator, .io = io };
     defer client.deinit();
 
     const uri_str = try std.fmt.allocPrint(allocator, "{s}/chat/completions", .{base_url});
@@ -196,25 +199,6 @@ fn dupeToolCalls(allocator: std.mem.Allocator, tcs: []const ToolCall) ![]ToolCal
 pub const main = if (@hasDecl(std.process, "Init"))
     struct {
         fn main016(init: std.process.Init) !void {
-            comptime {
-                const client_fields = @typeInfo(std.http.Client).@"struct".fields;
-                var io_type_name: []const u8 = "not found";
-                for (client_fields) |f| {
-                    if (std.mem.eql(u8, f.name, "io")) {
-                        io_type_name = @typeName(f.type);
-                    }
-                }
-                
-                const init_fields = @typeInfo(std.process.Init).@"struct".fields;
-                var io_init_type: []const u8 = "not found";
-                for (init_fields) |f| {
-                    if (std.mem.eql(u8, f.name, "io")) {
-                        io_init_type = @typeName(f.type);
-                    }
-                }
-
-                @compileError("Client.io: " ++ io_type_name ++ ", Init.io: " ++ io_init_type);
-            }
             const allocator = init.arena.allocator();
 
             const args = try init.minimal.args.toSlice(allocator);
@@ -237,7 +221,7 @@ pub const main = if (@hasDecl(std.process, "Init"))
 
             const base_url = init.environ_map.get("OPENROUTER_BASE_URL") orelse "https://openrouter.ai/api/v1";
 
-            try runAgent(allocator, prompt_str, api_key, base_url);
+            try runAgent(allocator, prompt_str, api_key, base_url, init.io);
         }
 
         pub fn main(init: std.process.Init) !void {
@@ -282,7 +266,7 @@ else
             };
             defer allocator.free(base_url);
 
-            try runAgent(allocator, prompt_str, api_key, base_url);
+            try runAgent(allocator, prompt_str, api_key, base_url, {});
         }
 
         pub fn main() !void {
