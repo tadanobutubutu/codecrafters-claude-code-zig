@@ -224,28 +224,17 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
 
                     const success = if (@TypeOf(io) == void) write: {
                         var file = std.fs.cwd().createFile(file_path, .{}) catch break :write false;
-                        if (@TypeOf(io) == void) {
-                            file.close();
-                        } else {
-                            file.close(io);
-                        }
-
-
+                        defer file.close();
                         file.writeAll(content) catch break :write false;
                         break :write true;
                     } else write: {
                         const Io = std.Io;
                         var file = Io.Dir.createFile(Io.Dir.cwd(), io, file_path, .{}) catch break :write false;
-                        if (@TypeOf(io) == void) {
-                            file.close();
-                        } else {
-                            file.close(io);
-                        }
-
-
+                        defer file.close(io);
                         file.writeStreamingAll(io, content) catch break :write false;
                         break :write true;
                     };
+
 
                     if (!success) {
                         const err_msg = try allocator.dupe(u8, "Error writing file");
