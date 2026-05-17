@@ -31,7 +31,7 @@ fn readFileAlloc(allocator: std.mem.Allocator, file_path: []const u8, io: anytyp
         return try std.fs.cwd().readFileAlloc(allocator, file_path, 1024 * 1024);
     } else {
         const Io = std.Io;
-        return try Io.Dir.readFileAlloc(Io.Dir.cwd(), io, file_path, allocator, 1024 * 1024);
+        return try Io.Dir.readFileAlloc(Io.Dir.cwd(), io, file_path, allocator, .unlimited);
     }
 }
 
