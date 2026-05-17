@@ -90,7 +90,7 @@ fn runAgent(allocator: std.mem.Allocator, prompt_str: []const u8, api_key: []con
         defer body_buf.deinit();
 
         try std.json.Stringify.value(.{
-            .model = "anthropic/claude-3-5-haiku",
+            .model = "anthropic/claude-haiku-4.5",
             .messages = messages.items,
             .tools = &[_]struct {
                 type: []const u8,
